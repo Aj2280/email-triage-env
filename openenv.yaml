@@ -1,0 +1,9 @@
+version: "1.0"
+name: email-triage-env
+description: "A real-world email triage environment"
+task_ids:
+  - task_easy
+    - task_medium
+      - task_hard
+      model_name: gpt-4o-mini
+      api_base_url: https://api.openai.com/v1
