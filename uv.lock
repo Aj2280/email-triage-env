@@ -1,0 +1,13 @@
+[[package]]
+name = "email-triage-env"
+version = "1.0.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "fastapi" },
+    { name = "uvicorn" },
+    { name = "pydantic" },
+    { name = "openai" },
+    { name = "requests" },
+    { name = "python-multipart" },
+    { name = "openenv-core" },
+]
