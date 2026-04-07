@@ -292,11 +292,17 @@ def grade_hard(action: dict, ground_truth: dict) -> tuple[float, str]:
 def run_grader(task_id: str, action: dict, email: dict) -> tuple[float, str]:
     """Dispatch to the right grader based on task_id."""
     gt = email["ground_truth"]
+    
     if task_id == "task_easy":
-        return grade_easy(action, gt)
+        raw_score, feedback = grade_easy(action, gt)
     elif task_id == "task_medium":
-        return grade_medium(action, gt)
+        raw_score, feedback = grade_medium(action, gt)
     elif task_id == "task_hard":
-        return grade_hard(action, gt)
+        raw_score, feedback = grade_hard(action, gt)
     else:
-        return 0.0, f"Unknown task_id: {task_id}"
+        raw_score, feedback = 0.0, f"Unknown task_id: {task_id}"
+
+    # Scaler Phase 2 Requirement: Scores must be strictly between 0 and 1 (not 0.0 or 1.0)
+    clamped_score = round(min(max(raw_score, 0.01), 0.99), 2)
+    
+    return clamped_score, feedback
