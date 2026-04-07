@@ -1,0 +1,90 @@
+name: email-triage-env
+version: "1.0.0"
+description: >
+  A real-world OpenEnv environment where AI agents learn to triage emails —
+  categorizing, prioritizing, and routing them to the correct department.
+  Includes 3 tasks of increasing difficulty with automated graders.
+
+author: hackathon-participant
+license: MIT
+
+environment:
+  type: text
+  interface: http
+  api_base: /
+
+tasks:
+  - id: task_easy
+    name: Email Categorization
+    difficulty: easy
+    description: >
+      Given an email, classify it into one of: spam, urgent, normal, promotional.
+    reward_range: [0.0, 1.0]
+
+  - id: task_medium
+    name: Email Prioritization and Routing
+    difficulty: medium
+    description: >
+      Given an email, classify it AND assign a priority level (low/medium/high/critical)
+      AND route it to the correct department (HR, IT, Sales, Support, Finance).
+    reward_range: [0.0, 1.0]
+
+  - id: task_hard
+    name: Full Email Triage with Response Draft
+    difficulty: hard
+    description: >
+      Perform full triage: categorize, prioritize, route, and generate
+      an appropriate short response or action summary for the email.
+    reward_range: [0.0, 1.0]
+
+action_space:
+  type: object
+  properties:
+    task_id:
+      type: string
+      description: Which task to solve (task_easy | task_medium | task_hard)
+    category:
+      type: string
+      description: Email category (spam | urgent | normal | promotional)
+    priority:
+      type: string
+      description: Priority level (low | medium | high | critical)
+    department:
+      type: string
+      description: Target department (HR | IT | Sales | Support | Finance)
+    response_draft:
+      type: string
+      description: Short response or action summary (required for task_hard)
+
+observation_space:
+  type: object
+  properties:
+    email_id:
+      type: string
+    subject:
+      type: string
+    body:
+      type: string
+    sender:
+      type: string
+    received_at:
+      type: string
+    task_id:
+      type: string
+    feedback:
+      type: string
+    score:
+      type: number
+    done:
+      type: boolean
+
+endpoints:
+  reset: POST /reset
+  step: POST /step
+  state: GET /state
+  health: GET /health
+
+deployment:
+  framework: fastapi
+  python_version: "3.11"
+  port: 8000

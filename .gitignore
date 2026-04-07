@@ -1,0 +1,11 @@
+venv/
+venv_10/
+__pycache__/
+*.pyc
+*.log
+.DS_Store
+/inference_results.json
+server.log
+inference.log
+.agents/
+.ipynb_checkpoints/
