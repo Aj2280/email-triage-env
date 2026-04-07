@@ -13,69 +13,44 @@ app_port: 8000
 A real-world OpenEnv environment where AI agents learn to triage emails:
 **categorise → prioritise → route → respond.**
 
-Built for the **Meta × PyTorch × Scaler OpenEnv Hackathon **.
+Built for the **Meta × PyTorch × Scaler OpenEnv Hackathon**.
+
+> [!IMPORTANT]
+> **Status: Phase 1 & Phase 2 PASSED** ✅
+> This environment is fully compliant with the Phase 2 agentic evaluation requirements, including mandatory structured output parsing and score range validation.
 
 ---
 
 ## 🎯 Environment Description
 
-Agents interact with an inbox of realistic business emails and must triage each
-one through three tasks of increasing difficulty.
+Agents interact with an inbox of realistic business emails and must triage each one through three tasks of increasing difficulty.
 
-| Task | What the agent must do | Max score |
+| Task | What the agent must do | Reward Range |
 |------|----------------------|-----------|
-| `task_easy` | Classify category only: `spam / urgent / normal / promotional` | 1.0 |
-| `task_medium` | Category + Priority (`low/medium/high/critical`) + Department (`HR/IT/Sales/Support/Finance`) | 1.0 |
-| `task_hard` | Full triage + write a short response draft | 1.0 |
+| `task_easy` | Classify category only: `spam / urgent / normal / promotional` | (0.0, 1.0) |
+| `task_medium` | Category + Priority + Department routing | (0.0, 1.0) |
+| `task_hard` | Full triage + write a short response draft | (0.0, 1.0) |
 
 ---
 
-## 🔌 Action & Observation Spaces
+## 🏆 Scoring & Compliance (Phase 2)
 
-### Action (`POST /step`)
-
-```json
-{
-  "task_id":        "task_easy | task_medium | task_hard",
-  "category":       "spam | urgent | normal | promotional",
-  "priority":       "low | medium | high | critical",
-  "department":     "HR | IT | Sales | Support | Finance",
-  "response_draft": "Short action summary or reply (task_hard only)"
-}
-```
-
-### Observation (returned by `/reset` and `/step`)
-
-```json
-{
-  "email_id":    "e002",
-  "subject":     "URGENT: Production server is down",
-  "body":        "Hi team, our production server...",
-  "sender":      "ceo@bigclient.com",
-  "received_at": "2025-04-01T09:15:00Z",
-  "task_id":     "task_easy",
-  "feedback":    "✅ Correct! Category 'urgent' matches expected 'urgent'.",
-  "score":       1.0,
-  "done":        false
-}
-```
+To ensure compatibility with the automated evaluator, the following scoring rules are enforced:
+- **Strict Range**: All rewards and episode scores are clamped strictly between 0 and 1 (typically **0.01 to 0.99**) to satisfy the hackathon validator's `strictly within (0, 1)` check.
+- **Partial Credit**: `task_medium` and `task_hard` award partial credit for "off-by-one" priority levels and keyword matches in responses.
 
 ---
 
-## 🏆 Reward Function
+## 📋 Mandatory Structured Output
 
-**task_easy** — binary: `1.0` if category correct, `0.0` otherwise.
+The `inference.py` script must print the following blocks to `stdout` for the Phase 2 parser to correctly grade the agent:
 
-**task_medium** — partial credit:
-- Category correct → +0.40
-- Priority correct → +0.30 (off-by-one → +0.15)
-- Department correct → +0.30
-
-**task_hard** — partial credit:
-- Category → +0.30
-- Priority → +0.20 (off-by-one → +0.10)
-- Department → +0.20
-- Response draft keyword quality → up to +0.30
+```text
+[START] task=task_id
+[STEP] step=N reward=X
+[END] task=task_id score=Y steps=N
+```
+*Note: All output blocks include `flush=True` to ensure real-time parsing.*
 
 ---
 
@@ -88,7 +63,8 @@ pip install -r requirements.txt
 uvicorn server.app:app --host 0.0.0.0 --port 8000
 ```
 
-### Docker
+### Docker (Hackathon Stable)
+We use a specific base image to ensure registry stability on remote runners:
 
 ```bash
 docker build -t email-triage-env .
@@ -108,26 +84,13 @@ curl -X POST http://localhost:8000/reset -H "Content-Type: application/json" \
 ## 🤖 Run Baseline Inference
 
 ```bash
-export API_BASE_URL=https://api.openai.com/v1
-export MODEL_NAME=gpt-4o-mini
+export API_BASE_URL=https://router.huggingface.co/v1
+export MODEL_NAME=meta-llama/Meta-Llama-3-8B-Instruct
 export HF_TOKEN=your_key_here
 
 # Start the environment server first, then:
 python inference.py --base-url http://localhost:8000
 ```
-
-Results are saved to `inference_results.json`.
-
----
-
-## 📋 OpenEnv Endpoints
-
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET`  | `/health` | Health check |
-| `POST` | `/reset`  | Start new episode |
-| `POST` | `/step`   | Submit triage action |
-| `GET`  | `/state`  | Inspect current state |
 
 ---
 
@@ -135,35 +98,29 @@ Results are saved to `inference_results.json`.
 
 ```
 email_triage_env/
-├── openenv.yaml          # OpenEnv spec
-├── models.py             # Typed Action / Observation / State
-├── inference.py          # Baseline inference script
-├── requirements.txt
-├── Dockerfile
-├── README.md
+├── openenv.yaml          # OpenEnv spec (interface, action/obs space)
+├── models.py             # Typed Pydantic models for API
+├── inference.py          # Baseline agent with structured output [START/STEP/END]
+├── requirements.txt      # Minimal dependency set
+├── Dockerfile            # Python 3.10-slim-bullseye build
 └── server/
-    ├── app.py            # FastAPI server
-    ├── email_triage_env.py  # Core environment logic
-    └── tasks.py          # Email dataset + graders
+    ├── app.py            # FastAPI entry point
+    ├── email_triage_env.py  # Core state management
+    └── tasks.py          # Graders (with 0.01-0.99 score clamping)
 ```
 
 ---
 
-## 🔧 Required Environment Variables (for inference)
+## 🔧 Environment Variables
 
 | Variable | Description |
 |----------|-------------|
-| `API_BASE_URL` | LLM API endpoint |
-| `MODEL_NAME` | Model identifier |
-| `HF_TOKEN` | Hugging Face / API key |
+| `API_BASE_URL` | LLM API endpoint (e.g., OpenRouter or HF Router) |
+| `MODEL_NAME` | Model identifier (e.g., meta-llama/Llama-3-8B) |
+| `HF_TOKEN` | Hugging Face Access Token |
 
 ---
 
-## ☁️ Deployment to Hugging Face Spaces
+## ☁️ Deployment
 
-This environment is fully containerized and ready to be deployed as a Docker Space on Hugging Face:
-1. Go to [Hugging Face Spaces](https://huggingface.co/spaces) and click **Create new Space**.
-2. Set the Space name (e.g., `email-triage-env`).
-3. Select **Docker** as the Space SDK and choose the **Blank** Docker template.
-4. Clone the space repository and copy all these project files into it.
-5. Commit and push the files. Hugging Face will automatically build the `Dockerfile` and expose the API on port `8000`.
+This project is optimized for deployment as a **Hugging Face Docker Space**. Ensure you set the `HF_TOKEN` in the Space settings as a Secret for the inference script to access protected models.
