@@ -165,8 +165,10 @@ def run_task(base_url: str, task_id: str, num_episodes: int) -> dict:
             if result.get("done", False):
                 break
 
-        print(f"[END] task={task_id} score={total_reward} steps={steps}", flush=True)
-        episode_rewards.append(total_reward / max(steps, 1))
+        # Calculate and clamp the final score for the [END] block (strictly between 0 and 1)
+        final_score = round(min(max(total_reward / max(steps, 1), 0.01), 0.99), 2)
+        print(f"[END] task={task_id} score={final_score} steps={steps}", flush=True)
+        episode_rewards.append(final_score)
 
     avg = sum(episode_rewards) / len(episode_rewards)
     return {
