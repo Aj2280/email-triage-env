@@ -2,7 +2,7 @@
 # Builds a containerised FastAPI server that exposes the OpenEnv HTTP endpoints.
 # Designed to run on 2 vCPU / 8 GB RAM as per hackathon infra constraints.
 
-FROM python:3.11-slim
+FROM python:3.11
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
